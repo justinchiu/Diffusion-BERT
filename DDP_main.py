@@ -50,7 +50,6 @@ def parse_args():
     parser.add_argument("--schedule", default='mutual', type=str, required=False)
     parser.add_argument("--from_scratch", default=False, type=bool, required=False)
     parser.add_argument("--timestep", default='none', type=str, required=False)
-    # parser.add_argument("--local_rank", default=-1)
     return parser.parse_args()
 
 
@@ -60,7 +59,10 @@ if __name__ == '__main__':
     device = torch.device("cuda", local_rank)
 
     torch.cuda.set_device(local_rank)
-    dist.init_process_group(backend='nccl', timeout=datetime.timedelta(seconds=9600))
+    dist.init_process_group(
+        backend='nccl',
+        timeout=datetime.timedelta(seconds=9600)
+    )
 
     set_seed(args)
     if args.timestep in ['none', 'token']:
