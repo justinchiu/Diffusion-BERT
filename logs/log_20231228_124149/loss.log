@@ -11,3 +11,5 @@ Step:9999	{"loss": {"train_loss": 0.9365765824366826}, "step": 9999}
 Step:10999	{"loss": {"train_loss": 0.9278898956160992}, "step": 10999}
 Step:11999	{"loss": {"train_loss": 0.9416822861143155}, "step": 11999}
 Step:12999	{"loss": {"train_loss": 0.9526902045651805}, "step": 12999}
+Step:13999	{"loss": {"train_loss": 0.9554607929834165}, "step": 13999}
+Step:14999	{"loss": {"train_loss": 0.9037312234304845}, "step": 14999}
