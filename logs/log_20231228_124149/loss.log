@@ -1,0 +1,13 @@
+Step:999	{"loss": {"train_loss": 2.3235978422164916}, "step": 999}
+Step:1999	{"loss": {"train_loss": 1.2580418606847525}, "step": 1999}
+Step:2999	{"loss": {"train_loss": 1.169985146511346}, "step": 2999}
+Step:3999	{"loss": {"train_loss": 1.0613505531232803}, "step": 3999}
+Step:4999	{"loss": {"train_loss": 1.041461456411518}, "step": 4999}
+Step:5999	{"loss": {"train_loss": 1.055663394600153}, "step": 5999}
+Step:6999	{"loss": {"train_loss": 1.00324915946275}, "step": 6999}
+Step:7999	{"loss": {"train_loss": 0.9787498804479837}, "step": 7999}
+Step:8999	{"loss": {"train_loss": 1.0179761459536385}, "step": 8999}
+Step:9999	{"loss": {"train_loss": 0.9365765824366826}, "step": 9999}
+Step:10999	{"loss": {"train_loss": 0.9278898956160992}, "step": 10999}
+Step:11999	{"loss": {"train_loss": 0.9416822861143155}, "step": 11999}
+Step:12999	{"loss": {"train_loss": 0.9526902045651805}, "step": 12999}
