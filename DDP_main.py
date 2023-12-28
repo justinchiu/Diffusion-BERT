@@ -79,7 +79,7 @@ if __name__ == '__main__':
         fitlog.add_hyper(args)
         fitlog.add_hyper_in_file(__file__)
 
-        save_path = f'./model_name_{args.model_name_or_path}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
+        save_path = f'./model_name_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
     if args.model_name_or_path in ['bert-base-uncased', 'bert-large-uncased']:
         model_cls = BertForMaskedLM
         cfg_cls = BertConfig
@@ -88,12 +88,21 @@ if __name__ == '__main__':
         model_cls = RobertaForMaskedLM
         cfg_cls = RobertaConfig
         tok_cls = RobertaTokenizer
+    elif args.model_name_or_path in ["JunxiongWang/BiGS_512"]:
+        from BiGS.modeling_bigs import BiGSForMaskedLM, BiGSConfig
+        model_cls = BiGSForMaskedLM
+        cfg_cls = BiGSConfig
+        tok_cls = BertTokenizer
     else:
         raise NotImplementedError
 
 
     tokenizer = tok_cls.from_pretrained(args.model_name_or_path)
-    word_freq = torch.load(f'./word_freq/{args.model_name_or_path}_{args.task_name}.pt')
+    word_freq = torch.load(
+        f'./word_freq/{args.model_name_or_path}_{args.task_name}.pt'
+        if args.model_name_or_path not in ["JunxiongWang/BiGS_512"]
+        else f'./word_freq/bert-base-uncased_{args.task_name}.pt'
+    )
     assert word_freq.size(0) == tokenizer.vocab_size
 
 
