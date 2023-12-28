@@ -3,4 +3,4 @@ torchrun --nnodes=1 --nproc-per-node=4 --master-port=29400 DDP_main.py \
   --batch_size 32 \
   --timestep 'layerwise' \
   --from_scratch false \
-  --model_name_or_path JunxiongWang/BiGS_128
+  --model_name_or_path JunxiongWang/BiGS_512

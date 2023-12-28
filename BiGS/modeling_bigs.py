@@ -587,6 +587,7 @@ class BiGSModel(BiGSPreTrainedModel):
             position_ids=None,
             output_hidden_states=None,
             return_dict=None,
+            timestep=None,
     ):
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -667,6 +668,7 @@ class BiGSForMaskedLM(BiGSPreTrainedModel):
             labels=None,
             output_hidden_states=None,
             return_dict=None,
+            timestep=None,
     ):
         r"""
         labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):

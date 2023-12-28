@@ -54,6 +54,8 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    os.environ['NCCL_DEBUG'] = 'INFO'
+    os.environ['NCCL_P2P_LEVEL'] = 'NVL'
     args = parse_args()
     local_rank = int(os.environ['LOCAL_RANK'])
     device = torch.device("cuda", local_rank)
@@ -157,7 +159,7 @@ if __name__ == '__main__':
         model = model_cls(cfg).to(device)
         model.load_state_dict(ckpt['model'])
 
-    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
     optimizer = AdamW(model.parameters(), lr=args.lr)
     warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda n: n / 10000. + 1e-3 if n < 10000 else 100. / math.sqrt(n))
 
