@@ -7,3 +7,4 @@
 {"metric": {"dev_elbo_in_bits_per_dim": 0.098334901034832}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.09744555503129959}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.09668632596731186}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09607156366109848}}
