@@ -12,6 +12,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --partition=rush       # Request partition
 #SBATCH --gres=gpu:4
+#SBATCH --nodelist=rush-compute-03
 
 cd /home/jtc257/python/Diffusion-BERT/
 conda deactivate
