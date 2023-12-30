@@ -1,0 +1,6 @@
+Step:14999	{"metric": {"elbo": 148.84214782714844}, "step": 14999}
+Step:14999	{"metric": {"elbo_in_bits_per_dim": 0.11981524527072906}, "step": 14999}
+Step:29999	{"metric": {"elbo": 136.1750946044922}, "step": 29999}
+Step:29999	{"metric": {"elbo_in_bits_per_dim": 0.10959980636835098}, "step": 29999}
+Step:44999	{"metric": {"elbo": 130.574462890625}, "step": 44999}
+Step:44999	{"metric": {"elbo_in_bits_per_dim": 0.10509703308343887}, "step": 44999}
