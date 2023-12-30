@@ -81,7 +81,7 @@ if __name__ == '__main__':
         fitlog.add_hyper(args)
         fitlog.add_hyper_in_file(__file__)
 
-        save_path = f'./model_name_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
+    save_path = f'./model_name_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
 
 
     bigs_models = [
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     )
 
     if args.load_step > 0:
-        ckpt = torch.load(os.path.join(save_path, f'{args.load_step}.th'))
+        ckpt = torch.load(os.path.join(save_path, f'best({args.load_step}).th'))
     cfg = cfg_cls.from_pretrained(args.model_name_or_path)
     cfg.overall_timestep = diffusion_instance.num_steps
 
@@ -162,6 +162,9 @@ if __name__ == '__main__':
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
     optimizer = AdamW(model.parameters(), lr=args.lr)
     warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda n: n / 10000. + 1e-3 if n < 10000 else 100. / math.sqrt(n))
+    if args.load_step >= 0:
+        optimizer.load_state_dict(ckpt["optimizer"])
+        warmup_scheduler.load_state_dict(ckpt["warmup_scheduler"])
 
     train_data, test_data = DiffusionLoader(tokenizer=tokenizer).my_load(task_name='lm1b', splits=['train', 'test'])
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
