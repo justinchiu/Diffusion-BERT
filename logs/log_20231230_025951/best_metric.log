@@ -1,3 +1,8 @@
 {"metric": {"dev_elbo_in_bits_per_dim": 0.11981524527072906}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.10959980636835098}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.10509703308343887}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.1024729460477829}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.10073669254779816}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09942632168531418}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09831712394952774}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.0974230244755745}}

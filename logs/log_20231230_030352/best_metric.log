@@ -1,2 +1,5 @@
 {"metric": {"dev_elbo_in_bits_per_dim": 0.11433251202106476}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.10513465106487274}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.10102631151676178}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.0986015796661377}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09693679958581924}}
