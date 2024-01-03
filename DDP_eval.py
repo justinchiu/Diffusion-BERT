@@ -4,14 +4,12 @@ import random
 import numpy as np
 import argparse
 import torch
-import fitlog
 from dataloader import DiffusionLoader
 from transformers import BertTokenizer, BertConfig, RobertaTokenizer, RobertaConfig
 from models.modeling_roberta import RobertaForMaskedLM
 import diffusion_word_freq
 from torch.optim import AdamW
 from torch.nn.utils.rnn import pad_sequence
-import fastNLP
 from tqdm import tqdm
 from sample import Categorical, WholeWordMasking
 import torch.distributed as dist
@@ -74,15 +72,8 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError
 
-    if dist.get_rank() == 0:
-        log_dir = './logs'
-        fitlog.set_log_dir(log_dir)
-        fitlog.commit(__file__)
-        fitlog.add_hyper(args)
-        fitlog.add_hyper_in_file(__file__)
 
     save_path = f'./model_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
-
 
     bigs_models = [
         "JunxiongWang/BiGS_128",
@@ -108,7 +99,7 @@ if __name__ == '__main__':
     tokenizer = tok_cls.from_pretrained(args.model_name_or_path)
     word_freq = torch.load(
         f'./word_freq/{args.model_name_or_path}_{args.task_name}.pt'
-        if args.model_name_or_path not in bigs_models + ["bert-large-uncased"]
+        if args.model_name_or_path not in bigs_models
         else f'./word_freq/bert-base-uncased_{args.task_name}.pt'
     )
     assert word_freq.size(0) == tokenizer.vocab_size
@@ -146,11 +137,16 @@ if __name__ == '__main__':
         device=device
     )
 
+    # must load for evaluation!
+    assert args.load_step > 0
     if args.load_step > 0:
         ckpt = torch.load(os.path.join(save_path, f'best({args.load_step}).th'))
     cfg = cfg_cls.from_pretrained(args.model_name_or_path)
     cfg.overall_timestep = diffusion_instance.num_steps
 
+    # must load for evaluation!
+    assert not arg.from_scratch
+    assert args.load_step >= 0
     if args.from_scratch:
         model = model_cls(cfg).to(device)
     elif args.load_step <= 0:
@@ -169,7 +165,6 @@ if __name__ == '__main__':
     train_data, test_data = DiffusionLoader(tokenizer=tokenizer).my_load(task_name='lm1b', splits=['train', 'test'])
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
 
-    logger = fastNLP.logger
     if dist.get_rank() == 0:
         print('# of train data: {}'.format(len(train_data)))
         print('Example:')
@@ -250,91 +245,43 @@ if __name__ == '__main__':
     train_loss = .0
     nan_count = 0
     loss_list = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
-    for epoch in range(args.epochs):
-        train_loader.sampler.set_epoch(epoch)
-        dev_loader.sampler.set_epoch(epoch)
-        for i, batch in enumerate(tqdm(train_loader), args.load_step + 1):
-            metrics = diffusion_word_freq.compute_kl_reverse_process(
-                batch['input_ids'].to(device),
-                diffusion_instance.sample_t(),
-                denoise_fn=denoise_fn,
-                diffusion=diffusion_instance,
-                target_mask=batch['attention_mask'].to(device),
-                hybrid_lambda=args.hybrid_lambda,
-                predict_x0=args.predict_x0,
-                word_freq_logits=batch['word_freq_logits'].to(device)
-            )
+        nan_count_in_dev = 0
+        model.eval()
+        dev_metrics = {
+            'elbo': .0,
+            'elbo_in_bits_per_dim': .0,
+            # 'likelihood': .0,
+            # 'prior': .0,
+        }
 
-            loss = metrics['loss'] / args.batch_size
-            dist.all_gather(loss_list, loss)
-            if torch.stack(loss_list).isnan().any():
-                nan_count += 1
-                logger.warning(f'NaN encountered {nan_count} times')
-                continue
-            train_loss += loss.item()
-            loss.backward()
-            torch.nn.utils.clip_grad_value_(model.parameters(), 5)
-            optimizer.step()
-            model.zero_grad()
-            optimizer.zero_grad()
-            warmup_scheduler.step()
+        with torch.no_grad():
+            for dev_batch in dev_loader:
+                batch_dev_metrics = diffusion_word_freq.discrete_diffusion_elbo(
+                    dev_batch['input_ids'].to(device),
+                    denoise_fn=denoise_fn,
+                    diffusion=diffusion_instance,
+                    target_mask=dev_batch['attention_mask'].to(device),
+                    normalize_without_padding=True,
+                    eval_step_size=args.eval_step_size,
+                    word_freq_logits=dev_batch['word_freq_logits'].to(device),
+                    device=device
+                )
+
+                if dist.get_rank() == 0:
+                    m = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
+                    for name in dev_metrics.keys():
+                        dist.gather(batch_dev_metrics[name].squeeze(), m)
+                        temp = sum(m)
+                        if not torch.isnan(temp):
+                            dev_metrics[name] += temp
+                        else:
+                            nan_count_in_dev += 1
+                            logger.warning(f'NaN encountered {nan_count_in_dev} times in dev')
+                else:
+                    for name in dev_metrics.keys():
+                        dist.gather(batch_dev_metrics[name].squeeze())
 
             if dist.get_rank() == 0:
-                if i % args.logging_steps == args.logging_steps - 1:
-                    logger.info(f'Loss at step {i} is {train_loss / args.logging_steps}')
-                    fitlog.add_loss(train_loss / args.logging_steps, name='train_loss', step=i)
-
-                    train_loss = .0
-
-            if i % args.eval_steps == args.eval_steps - 1:
-                nan_count_in_dev = 0
-                model.eval()
-                dev_metrics = {
-                    'elbo': .0,
-                    'elbo_in_bits_per_dim': .0,
-                    # 'likelihood': .0,
-                    # 'prior': .0,
-                }
-
-                with torch.no_grad():
-                    for dev_batch in dev_loader:
-                        batch_dev_metrics = diffusion_word_freq.discrete_diffusion_elbo(
-                            dev_batch['input_ids'].to(device),
-                            denoise_fn=denoise_fn,
-                            diffusion=diffusion_instance,
-                            target_mask=dev_batch['attention_mask'].to(device),
-                            normalize_without_padding=True,
-                            eval_step_size=args.eval_step_size,
-                            word_freq_logits=dev_batch['word_freq_logits'].to(device),
-                            device=device
-                        )
-
-                        if dist.get_rank() == 0:
-                            m = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
-                            for name in dev_metrics.keys():
-                                dist.gather(batch_dev_metrics[name].squeeze(), m)
-                                temp = sum(m)
-                                if not torch.isnan(temp):
-                                    dev_metrics[name] += temp
-                                else:
-                                    nan_count_in_dev += 1
-                                    logger.warning(f'NaN encountered {nan_count_in_dev} times in dev')
-                        else:
-                            for name in dev_metrics.keys():
-                                dist.gather(batch_dev_metrics[name].squeeze())
-
-                    if dist.get_rank() == 0:
-                        for name in dev_metrics.keys():
-                            dev_metrics[name] /= len(dev_data)
-                            fitlog.add_metric(dev_metrics[name], name=name, step=i)
-
-                        if dev_metrics['elbo_in_bits_per_dim'] <= best_dev_elbo:
-                            best_dev_elbo = dev_metrics['elbo_in_bits_per_dim']
-                            fitlog.add_best_metric(dev_metrics['elbo_in_bits_per_dim'], name='dev_elbo_in_bits_per_dim')
-                            torch.save({
-                                'model': model.state_dict(),
-                                'optimizer': optimizer.state_dict(),
-                                'warmup_scheduler': warmup_scheduler.state_dict(),
-                            }, f'./{save_path}/best({i}).th')
-                    model.train()
+                for name in dev_metrics.keys():
+                    dev_metrics[name] /= len(dev_data)
 

@@ -6,3 +6,16 @@
 {"metric": {"dev_elbo_in_bits_per_dim": 0.09942632168531418}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.09831712394952774}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.0974230244755745}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.0966607928276062}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09605077654123306}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09550413489341736}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09499382227659225}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09451299905776978}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09410358220338821}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09368154406547546}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09315213561058044}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09284557402133942}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09263188391923904}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.0923353061079979}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.0920945405960083}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09177933633327484}}
