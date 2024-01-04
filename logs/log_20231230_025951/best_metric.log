@@ -19,3 +19,4 @@
 {"metric": {"dev_elbo_in_bits_per_dim": 0.0923353061079979}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.0920945405960083}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.09177933633327484}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.09163125604391098}}

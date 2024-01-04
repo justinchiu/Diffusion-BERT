@@ -10,8 +10,9 @@
 #SBATCH --mem=64G                           # server memory requested (per node)
 #SBATCH -t 96:00:00                           # Time limit (hh:mm:ss)
 #SBATCH --cpus-per-task=16
-#SBATCH --partition=nlplarge       # Request partition
-#SBATCH --gres=gpu:1
+#SBATCH --partition=rush       # Request partition
+#SBATCH --gres=gpu:4
+#SBATCH --nodelist=rush-compute-03
 
 cd /home/jtc257/python/Diffusion-BERT/
 conda deactivate

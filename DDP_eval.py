@@ -55,6 +55,7 @@ if __name__ == '__main__':
     os.environ['NCCL_DEBUG'] = 'INFO'
     os.environ['NCCL_P2P_LEVEL'] = 'NVL'
     args = parse_args()
+    print(args)
     local_rank = int(os.environ['LOCAL_RANK'])
     device = torch.device("cuda", local_rank)
 
@@ -99,7 +100,7 @@ if __name__ == '__main__':
     tokenizer = tok_cls.from_pretrained(args.model_name_or_path)
     word_freq = torch.load(
         f'./word_freq/{args.model_name_or_path}_{args.task_name}.pt'
-        if args.model_name_or_path not in bigs_models
+        if args.model_name_or_path not in bigs_models + ["bert-large-uncased"]
         else f'./word_freq/bert-base-uncased_{args.task_name}.pt'
     )
     assert word_freq.size(0) == tokenizer.vocab_size
@@ -140,27 +141,26 @@ if __name__ == '__main__':
     # must load for evaluation!
     assert args.load_step > 0
     if args.load_step > 0:
-        ckpt = torch.load(os.path.join(save_path, f'best({args.load_step}).th'))
+        path = os.path.join(save_path, f'best({args.load_step}).th')
+        print(f"loading {path}")
+        ckpt = torch.load(path)
     cfg = cfg_cls.from_pretrained(args.model_name_or_path)
     cfg.overall_timestep = diffusion_instance.num_steps
 
     # must load for evaluation!
-    assert not arg.from_scratch
     assert args.load_step >= 0
-    if args.from_scratch:
-        model = model_cls(cfg).to(device)
-    elif args.load_step <= 0:
-        model = model_cls.from_pretrained(args.model_name_or_path, config=cfg).to(device)
-    else:
-        model = model_cls(cfg).to(device)
-        model.load_state_dict(ckpt['model'])
+    model = model_cls(cfg).to(device)
+
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in ckpt["model"].items():
+        name = k[7:] # remove `module.`
+        new_state_dict[name] = v
+    # load params
+    model.load_state_dict(new_state_dict)
+    #model.load_state_dict(ckpt['model'])
 
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
-    optimizer = AdamW(model.parameters(), lr=args.lr)
-    warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda n: n / 10000. + 1e-3 if n < 10000 else 100. / math.sqrt(n))
-    if args.load_step >= 0:
-        optimizer.load_state_dict(ckpt["optimizer"])
-        warmup_scheduler.load_state_dict(ckpt["warmup_scheduler"])
 
     train_data, test_data = DiffusionLoader(tokenizer=tokenizer).my_load(task_name='lm1b', splits=['train', 'test'])
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
@@ -242,46 +242,45 @@ if __name__ == '__main__':
             os.makedirs(save_path, exist_ok=True)
         best_dev_elbo = float('inf')
 
-    train_loss = .0
     nan_count = 0
     loss_list = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
-        nan_count_in_dev = 0
-        model.eval()
-        dev_metrics = {
-            'elbo': .0,
-            'elbo_in_bits_per_dim': .0,
-            # 'likelihood': .0,
-            # 'prior': .0,
-        }
+    nan_count_in_dev = 0
+    model.eval()
+    dev_metrics = {
+        'elbo': .0,
+        'elbo_in_bits_per_dim': .0,
+        # 'likelihood': .0,
+        # 'prior': .0,
+    }
 
-        with torch.no_grad():
-            for dev_batch in dev_loader:
-                batch_dev_metrics = diffusion_word_freq.discrete_diffusion_elbo(
-                    dev_batch['input_ids'].to(device),
-                    denoise_fn=denoise_fn,
-                    diffusion=diffusion_instance,
-                    target_mask=dev_batch['attention_mask'].to(device),
-                    normalize_without_padding=True,
-                    eval_step_size=args.eval_step_size,
-                    word_freq_logits=dev_batch['word_freq_logits'].to(device),
-                    device=device
-                )
-
-                if dist.get_rank() == 0:
-                    m = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
-                    for name in dev_metrics.keys():
-                        dist.gather(batch_dev_metrics[name].squeeze(), m)
-                        temp = sum(m)
-                        if not torch.isnan(temp):
-                            dev_metrics[name] += temp
-                        else:
-                            nan_count_in_dev += 1
-                            logger.warning(f'NaN encountered {nan_count_in_dev} times in dev')
-                else:
-                    for name in dev_metrics.keys():
-                        dist.gather(batch_dev_metrics[name].squeeze())
+    with torch.no_grad():
+        for dev_batch in tqdm(dev_loader):
+            batch_dev_metrics = diffusion_word_freq.discrete_diffusion_elbo(
+                dev_batch['input_ids'].to(device),
+                denoise_fn=denoise_fn,
+                diffusion=diffusion_instance,
+                target_mask=dev_batch['attention_mask'].to(device),
+                normalize_without_padding=True,
+                eval_step_size=args.eval_step_size,
+                word_freq_logits=dev_batch['word_freq_logits'].to(device),
+                device=device
+            )
 
             if dist.get_rank() == 0:
+                m = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
                 for name in dev_metrics.keys():
-                    dev_metrics[name] /= len(dev_data)
+                    dist.gather(batch_dev_metrics[name].squeeze(), m)
+                    temp = sum(m)
+                    if not torch.isnan(temp):
+                        dev_metrics[name] += temp
+                    else:
+                        nan_count_in_dev += 1
+                        logger.warning(f'NaN encountered {nan_count_in_dev} times in dev')
+            else:
+                for name in dev_metrics.keys():
+                    dist.gather(batch_dev_metrics[name].squeeze())
+
+        if dist.get_rank() == 0:
+            for name in dev_metrics.keys():
+                dev_metrics[name] /= len(dev_data)
 
