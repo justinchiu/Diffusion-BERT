@@ -1,3 +1,6 @@
+"""
+Evaluate the ELBO of diffusionbert on LM1B test
+"""
 import os
 import sys
 import random
@@ -190,10 +193,8 @@ if __name__ == '__main__':
         }
 
 
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_data)
-    dev_sampler = torch.utils.data.distributed.DistributedSampler(dev_data)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, collate_fn=collate_fn, num_workers=4, pin_memory=True, sampler=train_sampler)
-    dev_loader = torch.utils.data.DataLoader(dev_data, batch_size=args.batch_size * 2, collate_fn=collate_fn, num_workers=4, pin_memory=True, sampler=dev_sampler)
+    dev_sampler = torch.utils.data.distributed.DistributedSampler(test_data)
+    dev_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size * 2, collate_fn=collate_fn, num_workers=4, pin_memory=True, sampler=dev_sampler)
 
     model.train()
 
@@ -246,14 +247,21 @@ if __name__ == '__main__':
     loss_list = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
     nan_count_in_dev = 0
     model.eval()
+
+    MAX_LEN = 256
+    BSZ = args.batch_size * 2
+
     dev_metrics = {
-        'elbo': .0,
-        'elbo_in_bits_per_dim': .0,
+        'elbo': torch.zeros(MAX_LEN, dtype=torch.float32, device=device),
+        'elbo_in_bits_per_dim': torch.zeros(MAX_LEN, dtype=torch.float32, device=device),
         # 'likelihood': .0,
         # 'prior': .0,
     }
+    length_counts = torch.zeros(MAX_LEN, dtype=torch.int64, device=device)
 
     with torch.no_grad():
+        batch_ones = torch.ones(args.batch_size*2, dtype=torch.int64, device=device)
+
         for dev_batch in tqdm(dev_loader):
             batch_dev_metrics = diffusion_word_freq.discrete_diffusion_elbo(
                 dev_batch['input_ids'].to(device),
@@ -263,24 +271,49 @@ if __name__ == '__main__':
                 normalize_without_padding=True,
                 eval_step_size=args.eval_step_size,
                 word_freq_logits=dev_batch['word_freq_logits'].to(device),
-                device=device
+                device=device,
+                per_example=True,
+            )
+            # count_nonzero should have a device kwarg, but doesnt
+            lengths = torch.count_nonzero(dev_batch["attention_mask"], axis=-1).to(device)
+
+            batch_metrics_by_length = {
+                name: torch.zeros(MAX_LEN, dtype=torch.float32, device=device)
+                    .scatter_add_(0, lengths, batch_dev_metrics[name])
+                for name in dev_metrics.keys()
+            }
+            batch_length_counts = (torch.zeros(MAX_LEN, dtype=torch.int64, device=device)
+                .scatter_add_(0, lengths, batch_ones)
             )
 
             if dist.get_rank() == 0:
-                m = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
+                m = [torch.zeros(MAX_LEN, device=device) for _ in range(dist.get_world_size())]
                 for name in dev_metrics.keys():
-                    dist.gather(batch_dev_metrics[name].squeeze(), m)
+                    dist.gather(batch_metrics_by_length[name].squeeze(), m)
                     temp = sum(m)
-                    if not torch.isnan(temp):
+                    if not torch.isnan(temp).any():
                         dev_metrics[name] += temp
                     else:
                         nan_count_in_dev += 1
                         logger.warning(f'NaN encountered {nan_count_in_dev} times in dev')
+
+                length_m = [torch.zeros(MAX_LEN, dtype=torch.int64, device=device) for _ in range(dist.get_world_size())]
+                dist.gather(batch_length_counts, length_m)
+
+                length_counts += sum(length_m)
             else:
                 for name in dev_metrics.keys():
-                    dist.gather(batch_dev_metrics[name].squeeze())
+                    dist.gather(batch_metrics_by_length[name].squeeze())
+                    dist.gather(batch_length_counts)
+            break
 
         if dist.get_rank() == 0:
-            for name in dev_metrics.keys():
-                dev_metrics[name] /= len(dev_data)
-
+            elbo = dev_metrics["elbo"]
+            avg_token_elbo = elbo / (length_counts * torch.arange(MAX_LEN, device=device))
+            os.makedirs(f"{save_path}/elbos", exist_ok=True)
+            elbo_save_path = f'{save_path}/elbos/elbo-avg-by-lens-chp-{args.load_step}-totsteps-{args.num_steps}-stepsize-{args.eval_step_size}.th'
+            print(f"SAVING TO {elbo_save_path}")
+            torch.save({
+                "elbo": elbo,
+                "avg_token_elbo": avg_token_elbo,
+            }, elbo_save_path)

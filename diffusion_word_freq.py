@@ -633,19 +633,22 @@ def compute_prior_kl(x_start, diffusion, target_mask=None, word_freq_logits=None
     return loss, 1
 
 
-def compute_kl_reverse_process(x_start,
-                               t,
-                               *,
-                               diffusion,
-                               denoise_fn,
-                               predict_x0=True,
-                               log_space=False,
-                               hybrid_lambda=0.0,
-                               use_cached_transition=True,
-                               target_mask=None,
-                               word_freq_logits=None,
-                               step_size=1,
-                               device=None):
+def compute_kl_reverse_process(
+    x_start,
+    t,
+    *,
+    diffusion,
+    denoise_fn,
+    predict_x0=True,
+    log_space=False,
+    hybrid_lambda=0.0,
+    use_cached_transition=True,
+    target_mask=None,
+    word_freq_logits=None,
+    step_size=1,
+    device=None,
+    per_example=False,
+):
     """Returns the KL for one term in the ELBO (time t) (loss L_t).
     This assumes x_start is a sample from x_0, from which we draw samples from
     q(x_t | x_0) and then compute q(x_{t-1} | x_t, x_0) following the LaTeX. This
@@ -716,14 +719,24 @@ def compute_kl_reverse_process(x_start,
         kl = losses.kl_divergence_with_probs(q_t, p_t)
         cross_entropy = losses.cross_entropy_with_probs(probs=p_t, targets=x_start)
 
-    if target_mask is not None:
-        kl = (kl * target_mask).sum()
-        cross_entropy = (cross_entropy * target_mask).sum()
-        hybrid_loss = (hybrid_loss * target_mask).sum()
+    if per_example:
+        if target_mask is not None:
+            kl = (kl * target_mask).sum(-1)
+            cross_entropy = (cross_entropy * target_mask).sum(-1)
+            hybrid_loss = (hybrid_loss * target_mask).sum(-1)
+        else:
+            kl = kl.sum(-1)
+            cross_entropy = cross_entropy.sum(-1)
+            hybrid_loss = hybrid_loss.sum(-1)
     else:
-        kl = kl.sum()
-        cross_entropy = cross_entropy.sum()
-        hybrid_loss = hybrid_loss.sum()
+        if target_mask is not None:
+            kl = (kl * target_mask).sum()
+            cross_entropy = (cross_entropy * target_mask).sum()
+            hybrid_loss = (hybrid_loss * target_mask).sum()
+        else:
+            kl = kl.sum()
+            cross_entropy = cross_entropy.sum()
+            hybrid_loss = hybrid_loss.sum()
 
     mask = (t == 0).long()
     base_loss = mask * cross_entropy + (1 - mask) * kl
@@ -754,6 +767,7 @@ def discrete_diffusion_elbo(
         normalize_without_padding=True,
         eval_step_size=1,
         device=None,
+        per_example=False,
 ):
     """Computes the ELBO likelihood bound for discrete diffusion models.
     Pseudocode:
@@ -795,7 +809,8 @@ def discrete_diffusion_elbo(
             hybrid_lambda=0.0,
             step_size=eval_step_size,
             word_freq_logits=word_freq_logits,
-            device=device
+            device=device,
+            per_example=per_example,
         )
 
         log_likelihood = metrics_dict["base_loss"] / metrics_dict["denominator"]
@@ -818,8 +833,10 @@ def discrete_diffusion_elbo(
 
     prior, denominator = compute_prior_kl(x_start, diffusion, target_mask=target_mask, word_freq_logits=word_freq_logits)
 
-    if target_mask is not None:
+    if target_mask is not None and not per_example:
         target_length = torch.count_nonzero(target_mask)
+    elif target_mask is not None and per_example:
+        target_length = target_mask.sum(-1)
     else:
         target_length = None
 
