@@ -51,6 +51,9 @@ def parse_args():
     parser.add_argument("--schedule", default='mutual', type=str, required=False)
     parser.add_argument("--from_scratch", default=False, type=bool, required=False)
     parser.add_argument("--timestep", default='none', type=str, required=False)
+    parser.add_argument("--length_min", default=0, type=int, required=True)
+    parser.add_argument("--length_max", default=32, type=int, required=True)
+    parser.add_argument("--num_batches", default=10, type=int, required=False)
     return parser.parse_args()
 
 
@@ -193,10 +196,14 @@ if __name__ == '__main__':
         }
 
 
+    # FILTER TEST DATA TO CORRECT LENGTHS
+    test_data = test_data.filter(lambda example:
+        args.length_min < sum(example["attention_mask"])
+        and sum(example["attention_mask"]) <= args.length_max
+    )
+
     dev_sampler = torch.utils.data.distributed.DistributedSampler(test_data)
     dev_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size * 2, collate_fn=collate_fn, num_workers=4, pin_memory=True, sampler=dev_sampler)
-
-    model.train()
 
     cls = torch.full((1, 1), fill_value=tokenizer.cls_token_id, device=device)
     sep = torch.full((1, 1), fill_value=tokenizer.sep_token_id, device=device)
@@ -238,11 +245,6 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError
 
-    if dist.get_rank() == 0:
-        if not os.path.exists(save_path):
-            os.makedirs(save_path, exist_ok=True)
-        best_dev_elbo = float('inf')
-
     nan_count = 0
     loss_list = [torch.tensor(0., device=device) for _ in range(dist.get_world_size())]
     nan_count_in_dev = 0
@@ -262,6 +264,7 @@ if __name__ == '__main__':
     with torch.no_grad():
         batch_ones = torch.ones(args.batch_size*2, dtype=torch.int64, device=device)
 
+        num_batches = 0
         for dev_batch in tqdm(dev_loader):
             batch_dev_metrics = diffusion_word_freq.discrete_diffusion_elbo(
                 dev_batch['input_ids'].to(device),
@@ -305,13 +308,16 @@ if __name__ == '__main__':
                 for name in dev_metrics.keys():
                     dist.gather(batch_metrics_by_length[name].squeeze())
                     dist.gather(batch_length_counts)
-            break
+
+            num_batches += 1
+            if num_batches >= args.num_batches:
+                break
 
         if dist.get_rank() == 0:
             elbo = dev_metrics["elbo"]
             avg_token_elbo = elbo / (length_counts * torch.arange(MAX_LEN, device=device))
             os.makedirs(f"{save_path}/elbos", exist_ok=True)
-            elbo_save_path = f'{save_path}/elbos/elbo-avg-by-lens-chp-{args.load_step}-totsteps-{args.num_steps}-stepsize-{args.eval_step_size}.th'
+            elbo_save_path = f'{save_path}/elbos/elbo-avg-by-lens-chp-{args.load_step}-totsteps-{args.num_steps}-stepsize-{args.eval_step_size}-minlen-{args.length_min}-maxlen-{args.length_max}-nb-{args.num_batches}.th'
             print(f"SAVING TO {elbo_save_path}")
             torch.save({
                 "elbo": elbo,

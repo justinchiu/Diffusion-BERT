@@ -2,3 +2,11 @@
 {"metric": {"dev_elbo_in_bits_per_dim": 0.08366893231868744}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.08242738991975784}}
 {"metric": {"dev_elbo_in_bits_per_dim": 0.08162838965654373}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.08107463270425797}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.08071429282426834}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.08027336746454239}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.07998260110616684}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.07970420271158218}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.07946869730949402}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.07923714816570282}}
+{"metric": {"dev_elbo_in_bits_per_dim": 0.07899385690689087}}
