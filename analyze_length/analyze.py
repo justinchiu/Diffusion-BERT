@@ -13,6 +13,6 @@ start_end_pairs = [
 ]
 
 for size in step_sizes:
-    for s,e in start_end_pairs:
-        xs = torch.load(DIR / f"elb-avg-by-lengs-chp-74999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th")
+    for s,t in start_end_pairs:
+        xs = torch.load(DIR / f"elbo-avg-by-lens-chp-74999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
         import pdb; pdb.set_trace()

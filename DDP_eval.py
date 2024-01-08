@@ -322,4 +322,5 @@ if __name__ == '__main__':
             torch.save({
                 "elbo": elbo,
                 "avg_token_elbo": avg_token_elbo,
+                "length_counts": length_counts,
             }, elbo_save_path)
