@@ -46,7 +46,7 @@ for stepsize in "${step_sizes[@]}"; do
         read -r start end <<< "$pair"
         
         # Build the command string and use eval to execute it
-        #runeval $stepsize $start $end
+        runeval $stepsize $start $end
         runeval_big $stepsize $start $end
     done
 done
