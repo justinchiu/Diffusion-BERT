@@ -6,8 +6,22 @@ torchrun --nnodes=1 --nproc-per-node=1 --master-port=29401 DDP_eval.py \
   --lr 5e-5 \
   --batch_size 32 \
   --timestep 'layerwise' \
-  --model_name_or_path bert-large-uncased \
-  --load_step 74999 \
+  --model_name_or_path bert-base-uncased \
+  --load_step 104999 \
+  --eval_step_size $1 \
+  --length_min $2 \
+  --length_max $3 \
+  --num_batches 10
+}
+
+runeval_scratch () {
+torchrun --nnodes=1 --nproc-per-node=1 --master-port=29401 DDP_eval.py \
+  --lr 5e-5 \
+  --batch_size 32 \
+  --timestep 'layerwise' \
+  --model_name_or_path bert-base-uncased \
+  --load_step 104999 \
+  --from_scratch True \
   --eval_step_size $1 \
   --length_min $2 \
   --length_max $3 \
@@ -47,6 +61,7 @@ for stepsize in "${step_sizes[@]}"; do
         
         # Build the command string and use eval to execute it
         runeval $stepsize $start $end
-        runeval_big $stepsize $start $end
+        #runeval_big $stepsize $start $end
+        runeval_scratch $stepsize $start $end
     done
 done

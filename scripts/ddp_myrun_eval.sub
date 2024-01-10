@@ -1,10 +1,20 @@
-# load from pretrained
-#torchrun --nnodes=1 --nproc-per-node=4 --master-port=29400 DDP_eval.py \
-torchrun --nnodes=1 --nproc-per-node=1 --master-port=29401 DDP_eval.py \
-  --lr 5e-5 \
-  --batch_size 32 \
-  --timestep 'layerwise' \
-  --model_name_or_path bert-base-uncased \
-  --load_step 119999 \
-  --eval_step_size 1024
+#!/bin/bash
+#SBATCH -J db_eval                          # Job name
+#SBATCH -o slurm/db_eval_%j.out                  # output file (%j expands to jobID)
+#SBATCH -e slurm/db_eval_%j.err                  # error log file (%j expands to jobID)
+#SBATCH --mail-type=ALL                      # Request status by email 
+#SBATCH --mail-user=jtc257@cornell.edu        # Email address to send results to.
+#SBATCH -N 1                                 # Total number of nodes requested
+#SBATCH -n 1                                 # Total number of cores requested
+#SBATCH --get-user-env                       # retrieve the users login environment
+#SBATCH --mem=32G                           # server memory requested (per node)
+#SBATCH -t 96:00:00                           # Time limit (hh:mm:ss)
+#SBATCH --cpus-per-task=16
+#SBATCH --partition=rush       # Request partition
+#SBATCH --gres=gpu:1
 
+
+cd /home/jtc257/python/Diffusion-BERT/
+conda deactivate
+conda activate DB
+bash scripts/ddp_myrun_eval.sh

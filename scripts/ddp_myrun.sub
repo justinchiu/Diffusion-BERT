@@ -13,6 +13,7 @@
 #SBATCH --partition=rush       # Request partition
 #SBATCH --gres=gpu:4
 
+. /home/jtc257/anaconda3/etc/profile.d/conda.sh
 cd /home/jtc257/python/Diffusion-BERT/
 conda deactivate
 conda activate DB
