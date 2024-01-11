@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 
 DIR = pathlib.Path("model_bert-base-uncased_bsz_32_lr_5e-05_seed_42_numsteps_2048_sample_Categorical_schedule_mutual_hybridlambda_0.01_wordfreqlambda_0.3_fromscratch_False_timestep_layerwise_ckpts/elbos")
+SCRATCHDIR = pathlib.Path("model_bert-base-uncased_bsz_32_lr_5e-05_seed_42_numsteps_2048_sample_Categorical_schedule_mutual_hybridlambda_0.01_wordfreqlambda_0.3_fromscratch_True_timestep_layerwise_ckpts/elbos")
 LARGEDIR = pathlib.Path("model_bert-large-uncased_bsz_32_lr_5e-05_seed_42_numsteps_2048_sample_Categorical_schedule_mutual_hybridlambda_0.01_wordfreqlambda_0.3_fromscratch_False_timestep_layerwise_ckpts/elbos")
 
 step_sizes = [4, 16, 32, 128, 256, 1024]
@@ -19,7 +20,8 @@ lengths = []
 ppls = []
 for size in step_sizes:
     for s,t in start_end_pairs:
-        basexs = torch.load(DIR / f"elbo-avg-by-lens-chp-74999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+        #basexs = torch.load(DIR / f"elbo-avg-by-lens-chp-74999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+        basexs = torch.load(SCRATCHDIR / f"elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
         xs = torch.load(LARGEDIR / f"elbo-avg-by-lens-chp-194999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
 
         avg_elbo = basexs["elbo"].sum() / (xs["length_counts"] * torch.arange(256)).sum()

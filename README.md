@@ -1,5 +1,15 @@
 # DiffusionBERT
 
+# Justin stuff
+
+```
+BertLarge logs
+logs/log_20240104_130219/metric.log
+
+BigsLarge logs
+logs/log_20240108_142158/metric.log
+```
+
 ![](src/DiffusionBERT.gif)
 
 Official implementation of [DiffusionBERT: Improving Generative Masked Language Models with Diffusion Models](https://arxiv.org/abs/2211.15029).
