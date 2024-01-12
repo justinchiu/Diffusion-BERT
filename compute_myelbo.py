@@ -247,7 +247,6 @@ if __name__ == '__main__':
             )
 
             if not torch.isnan(batch_dev_metrics['elbo']):
-                logger.info(batch_dev_metrics['elbo'])
                 elbo += batch_dev_metrics['elbo']
                 count += 1
 
