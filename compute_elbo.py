@@ -180,12 +180,6 @@ with torch.no_grad():
         if not torch.isnan(batch_dev_metrics['elbo']):
             logger.info(batch_dev_metrics['elbo'])
             elbo += batch_dev_metrics['elbo']
-            count += batch["attention_mask"].sum()
+            count += 1
 
-    elbo_save_path = f'{save_path}/elbos/simple-elbo-avg-by-lens-chp-{args.load_step}-totsteps-{args.num_steps}-stepsize-{args.eval_step_size}-minlen-{args.length_min}-maxlen-{args.length_max}-nb-{args.num_batches}.th'
-    print(f"SAVING TO {elbo_save_path}")
-    torch.save({
-        "elbo": elbo.item(),
-        "avg_token_elbo": (elbo / count).item(),
-        "num_tokens": count.item(),
-    }, elbo_save_path)
+print(elbo / (64. * count))
