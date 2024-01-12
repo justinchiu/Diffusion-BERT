@@ -228,7 +228,10 @@ if __name__ == '__main__':
     count = 0
 
     test_data = DiffusionLoader(tokenizer=tokenizer).my_load(task_name='lm1b', splits=['test'])[0]
-    _, test_data = test_data.train_test_split(test_size=5e-2).values()
+    test_data = test_data.filter(lambda example:
+        args.length_min < sum(example["attention_mask"])
+        and sum(example["attention_mask"]) <= args.length_max
+    ).select(range(10))
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, collate_fn=collate_fn, num_workers=4, pin_memory=True)
     with torch.no_grad():
         for batch in tqdm(test_loader):
@@ -242,7 +245,6 @@ if __name__ == '__main__':
                 eval_step_size=args.eval_step_size,
                 device=device
             )
-            import pdb; pdb.set_trace()
 
             if not torch.isnan(batch_dev_metrics['elbo']):
                 logger.info(batch_dev_metrics['elbo'])
