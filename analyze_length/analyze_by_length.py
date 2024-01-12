@@ -1,5 +1,4 @@
 import pathlib
-import math
 import torch
 import pandas as pd
 
@@ -13,24 +12,21 @@ start_end_pairs = [
     (0, 32),
     (32, 64),
     (64, 96),
-    #(96, 128),
+    (96, 128),
 ]
 
 steps = []
 lengths = []
 ppls = []
-for model in ["base-pretrained", "base-scratch", "large-pretrained"]:
 for size in step_sizes:
     for s,t in start_end_pairs:
-        xs = torch.load(DIR / f"elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
-        xs = torch.load(SCRATCHDIR / f"simple-elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
-        xs = torch.load(LARGEDIR / f"simple-elbo-avg-by-lens-chp-194999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+        #basexs = torch.load(DIR / f"elbo-avg-by-lens-chp-74999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+        basexs = torch.load(SCRATCHDIR / f"elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+        xs = torch.load(LARGEDIR / f"elbo-avg-by-lens-chp-194999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
 
-        elbo = xs["elbo"]
-        avg_elbo = xs["avg_token_elbo"]
-        avg_ppl = math.exp(avg_elbo)
-        num_tokens = xs["num_tokens"]
-        #num_examples = xs["num_examples"]
+        avg_elbo = basexs["elbo"].sum() / (xs["length_counts"] * torch.arange(256)).sum()
+        avg_elbo = xs["elbo"].sum() / (xs["length_counts"] * torch.arange(256)).sum()
+        avg_ppl = avg_elbo.exp().item()
         steps.append(2048//size)
         lengths.append((s,t))
         ppls.append(avg_ppl)

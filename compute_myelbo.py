@@ -231,7 +231,9 @@ if __name__ == '__main__':
     test_data = test_data.filter(lambda example:
         args.length_min < sum(example["attention_mask"])
         and sum(example["attention_mask"]) <= args.length_max
-    ).select(range(64 * 20))
+    )
+    if len(test_data) > 64 * 20:
+        test_data = test_data.select(range(64 * 20))
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, collate_fn=collate_fn, num_workers=4, pin_memory=True)
     with torch.no_grad():
         for batch in tqdm(test_loader):
@@ -256,5 +258,6 @@ if __name__ == '__main__':
             "elbo": elbo.item(),
             "avg_token_elbo": (elbo / count).item(),
             "num_tokens": count.item(),
+            "num_examples": len(test_data),
         }, elbo_save_path)
         print("ELBO", (elbo / count).item())
