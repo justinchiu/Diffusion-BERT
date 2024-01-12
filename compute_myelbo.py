@@ -231,7 +231,7 @@ if __name__ == '__main__':
     test_data = test_data.filter(lambda example:
         args.length_min < sum(example["attention_mask"])
         and sum(example["attention_mask"]) <= args.length_max
-    ).select(range(10))
+    ).select(range(64 * 10))
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, collate_fn=collate_fn, num_workers=4, pin_memory=True)
     with torch.no_grad():
         for batch in tqdm(test_loader):
