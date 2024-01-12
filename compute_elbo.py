@@ -162,7 +162,10 @@ elbo = 0.
 count = 0
 
 test_data = DiffusionLoader(tokenizer=tokenizer).my_load(task_name='lm1b', splits=['test'])[0]
-_, test_data = test_data.train_test_split(test_size=5e-2).values()
+test_data = test_data.filter(lambda example:
+    args.length_min < sum(example["attention_mask"])
+    and sum(example["attention_mask"]) <= args.length_max
+).select(range(10))
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, collate_fn=collate_fn, num_workers=4, pin_memory=True)
 with torch.no_grad():
     for batch in tqdm(test_loader):
@@ -180,6 +183,12 @@ with torch.no_grad():
         if not torch.isnan(batch_dev_metrics['elbo']):
             logger.info(batch_dev_metrics['elbo'])
             elbo += batch_dev_metrics['elbo']
-            count += 1
+            count += batch["attention_mask"].sum()
 
-print(elbo / (64. * count))
+    elbo_save_path = f'{save_path}/elbos/simple-elbo-avg-by-lens-chp-{args.load_step}-totsteps-{args.num_steps}-stepsize-{args.eval_step_size}-minlen-{args.length_min}-maxlen-{args.length_max}-nb-{args.num_batches}.th'
+    print(f"SAVING TO {elbo_save_path}")
+    torch.save({
+        "elbo": elbo.item(),
+        "avg_token_elbo": (elbo / count).item(),
+        "num_tokens": count.item(),
+    }, elbo_save_path)
