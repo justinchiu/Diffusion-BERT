@@ -41,6 +41,19 @@ python compute_myelbo.py \
   --num_batches 10
 }
 
+runeval_bigs () {
+python compute_myelbo.py \
+  --lr 5e-5 \
+  --batch_size 32 \
+  --timestep 'layerwise' \
+  --model_name_or_path JunxiongWang/BiGS_512 \
+  --load_step 209999\
+  --eval_step_size $1 \
+  --length_min $2 \
+  --length_max $3 \
+  --num_batches 10
+}
+
 # Define the step sizes
 step_sizes=(4 16 32 128 256 1024)
 #step_sizes=(16 32 128 256 1024)
@@ -60,8 +73,9 @@ for stepsize in "${step_sizes[@]}"; do
         read -r start end <<< "$pair"
         
         # Build the command string and use eval to execute it
-        runeval $stepsize $start $end
+        #runeval $stepsize $start $end
+        #runeval_big $stepsize $start $end
+        #runeval_scratch $stepsize $start $end
         runeval_big $stepsize $start $end
-        runeval_scratch $stepsize $start $end
     done
 done
