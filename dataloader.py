@@ -12,8 +12,8 @@ class DiffusionLoader:
 
     def _load(self, task_name, split):
         dataset = datasets.load_dataset(task_name, split=split)
-        print(f'Example in {split} set:')
-        print(dataset[0])
+        #print(f'Example in {split} set:')
+        #print(dataset[0])
         dataset = dataset.map(
             partial(
                 self.convert_to_features,
