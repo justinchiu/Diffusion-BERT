@@ -76,6 +76,6 @@ for stepsize in "${step_sizes[@]}"; do
         #runeval $stepsize $start $end
         #runeval_big $stepsize $start $end
         #runeval_scratch $stepsize $start $end
-        runeval_big $stepsize $start $end
+        runeval_bigs $stepsize $start $end
     done
 done

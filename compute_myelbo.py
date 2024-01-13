@@ -5,6 +5,7 @@ import os
 import sys
 import random
 import numpy as np
+import pathlib
 import argparse
 import torch
 from dataloader import DiffusionLoader
@@ -253,6 +254,7 @@ if __name__ == '__main__':
                 count += batch["attention_mask"].sum()
 
         elbo_save_path = f'{save_path}/elbos/simple-elbo-avg-by-lens-chp-{args.load_step}-totsteps-{args.num_steps}-stepsize-{args.eval_step_size}-minlen-{args.length_min}-maxlen-{args.length_max}-nb-{args.num_batches}.th'
+        pathlib.Path(elbo_save_path).parent.mkdir(parents=True,exist_ok=True)
         print(f"SAVING TO {elbo_save_path}")
         torch.save({
             "elbo": elbo.item(),

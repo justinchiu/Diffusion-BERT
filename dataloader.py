@@ -15,7 +15,11 @@ class DiffusionLoader:
         print(f'Example in {split} set:')
         print(dataset[0])
         dataset = dataset.map(
-            partial(self.convert_to_features, tokenizer=self.tokenizer),
+            partial(
+                self.convert_to_features,
+                tokenizer=self.tokenizer,
+                max_length=self.max_length,
+            ),
             batched=True,
             remove_columns='text',
         )
@@ -25,10 +29,10 @@ class DiffusionLoader:
         return [self._load(task_name, name) for name in splits]
 
     @staticmethod
-    def convert_to_features(example_batch, tokenizer):
+    def convert_to_features(example_batch, tokenizer, max_length):
         input_encodings = tokenizer.batch_encode_plus(
             example_batch['text'],
-            max_length=self.max_length,
+            max_length=max_length,
             truncation=True,
             add_special_tokens=False,
         )
