@@ -13,33 +13,40 @@ start_end_pairs = [
     (0, 32),
     (32, 64),
     (64, 96),
-    #(96, 128),
+    (96, 128),
 ]
 
-steps = []
-lengths = []
-ppls = []
-for model in ["base-pretrained", "base-scratch", "large-pretrained"]:
-for size in step_sizes:
-    for s,t in start_end_pairs:
-        xs = torch.load(DIR / f"elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
-        xs = torch.load(SCRATCHDIR / f"simple-elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
-        xs = torch.load(LARGEDIR / f"simple-elbo-avg-by-lens-chp-194999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+for model in ["bert-base", "bert-base-scratch", "bert-large",]:
+    steps = []
+    lengths = []
+    ppls = []
+    num_xs = []
 
-        elbo = xs["elbo"]
-        avg_elbo = xs["avg_token_elbo"]
-        avg_ppl = math.exp(avg_elbo)
-        num_tokens = xs["num_tokens"]
-        #num_examples = xs["num_examples"]
-        steps.append(2048//size)
-        lengths.append((s,t))
-        ppls.append(avg_ppl)
+    for size in step_sizes:
+        for s,t in start_end_pairs:
+            if model == "bert-base":
+                xs = torch.load(DIR / f"simple-elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+            elif model == "bert-base-scratch":
+                xs = torch.load(SCRATCHDIR / f"simple-elbo-avg-by-lens-chp-104999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
+            elif model == "bert-large":
+                xs = torch.load(LARGEDIR / f"simple-elbo-avg-by-lens-chp-194999-totsteps-2048-stepsize-{size}-minlen-{s}-maxlen-{t}-nb-10.th", map_location="cpu")
 
-df = pd.DataFrame({
-    "steps": steps,
-    "lengths": lengths,
-    "ppls": ppls,
-})
+            elbo = xs["elbo"]
+            avg_elbo = xs["avg_token_elbo"]
+            avg_ppl = math.exp(avg_elbo)
+            num_tokens = xs["num_tokens"]
+            num_examples = xs["num_examples"]
+            steps.append(2048//size)
+            lengths.append((s,t))
+            ppls.append(avg_ppl)
+            num_xs.append(num_examples)
 
-print(df)
-import pdb; pdb.set_trace()
+    df = pd.DataFrame({
+        "steps": steps,
+        "lengths": lengths,
+        "ppls": ppls,
+        "n": num_xs,
+    })
+
+    print(model)
+    print(df)
