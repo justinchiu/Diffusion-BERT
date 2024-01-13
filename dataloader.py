@@ -6,14 +6,19 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 class DiffusionLoader:
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, max_length=128):
         self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def _load(self, task_name, split):
-        dataset = datasets.load_dataset('lm1b', split=split)
+        dataset = datasets.load_dataset(task_name, split=split)
         print(f'Example in {split} set:')
         print(dataset[0])
-        dataset = dataset.map(partial(self.convert_to_features, tokenizer=self.tokenizer), batched=True, remove_columns='text')
+        dataset = dataset.map(
+            partial(self.convert_to_features, tokenizer=self.tokenizer),
+            batched=True,
+            remove_columns='text',
+        )
         return dataset
 
     def my_load(self, task_name, splits):
@@ -21,12 +26,16 @@ class DiffusionLoader:
 
     @staticmethod
     def convert_to_features(example_batch, tokenizer):
-        input_encodings = tokenizer.batch_encode_plus(example_batch['text'], max_length=128, truncation=True, add_special_tokens=False)
+        input_encodings = tokenizer.batch_encode_plus(
+            example_batch['text'],
+            max_length=self.max_length,
+            truncation=True,
+            add_special_tokens=False,
+        )
         encodings = {
             'input_ids': input_encodings['input_ids'],
             'attention_mask': input_encodings['attention_mask'],
         }
-
         return encodings
 
 class ConditionalLoader:

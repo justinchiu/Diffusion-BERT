@@ -32,6 +32,7 @@ def parse_args():
 
     parser.add_argument("--model_name_or_path", default='bert-base-uncased', type=str, required=False)
     parser.add_argument("--task_name", default='lm1b', type=str, required=False)
+    parser.add_argument("--max_length", default=128, type=int, required=False)
     parser.add_argument("--lr", default=5e-4, type=float, required=False)
     parser.add_argument("--epochs", default=3, type=int, required=False)
     parser.add_argument("--batch_size", default=64, type=int, required=False)
@@ -166,7 +167,11 @@ if __name__ == '__main__':
         optimizer.load_state_dict(ckpt["optimizer"])
         warmup_scheduler.load_state_dict(ckpt["warmup_scheduler"])
 
-    train_data, test_data = DiffusionLoader(tokenizer=tokenizer).my_load(task_name='lm1b', splits=['train', 'test'])
+    train_data, test_data = DiffusionLoader(
+        tokenizer=tokenizer,
+        dataset=args.task_name,
+        max_length=args.max_length,
+    ).my_load(task_name=args.dataset, splits=['train', 'test'])
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
 
     logger = fastNLP.logger
