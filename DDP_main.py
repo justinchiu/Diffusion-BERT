@@ -82,12 +82,18 @@ if __name__ == '__main__':
         fitlog.add_hyper(args)
         fitlog.add_hyper_in_file(__file__)
 
-    save_path = f'./model_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
+    if args.task_name == "lm1b":
+        save_path = f'./model_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
+    elif args.task_name == "pg19":
+        save_path = f'./pg19_model_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
+
 
 
     bigs_models = [
         "JunxiongWang/BiGS_128",
         "JunxiongWang/BiGS_512",
+        "JunxiongWang/BiGS_1024",
+        "JunxiongWang/BiGS_4096",
     ]
     if args.model_name_or_path in ['bert-base-uncased', 'bert-large-uncased']:
         model_cls = BertForMaskedLM
@@ -169,9 +175,8 @@ if __name__ == '__main__':
 
     train_data, test_data = DiffusionLoader(
         tokenizer=tokenizer,
-        dataset=args.task_name,
         max_length=args.max_length,
-    ).my_load(task_name=args.dataset, splits=['train', 'test'])
+    ).my_load(task_name=args.task_name, splits=['train', 'test'])
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
 
     logger = fastNLP.logger
