@@ -180,6 +180,7 @@ if __name__ == '__main__':
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
 
     logger = fastNLP.logger
+    """
     if dist.get_rank() == 0:
         print('# of train data: {}'.format(len(train_data)))
         print('Example:')
@@ -190,6 +191,7 @@ if __name__ == '__main__':
         print('\n# of test data: {}'.format(len(test_data)))
         print('Example:')
         print(test_data[0])
+    """
 
     def collate_fn(batch_input):
         input_ids = [torch.tensor(d['input_ids']) for d in batch_input]
