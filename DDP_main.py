@@ -7,6 +7,7 @@ import torch
 import fitlog
 from dataloader import DiffusionLoader
 from transformers import BertTokenizer, BertConfig, RobertaTokenizer, RobertaConfig
+from transformers import AutoModelForMaskedLM
 from models.modeling_roberta import RobertaForMaskedLM
 import diffusion_word_freq
 from torch.optim import AdamW
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     if args.task_name == "lm1b":
         save_path = f'./model_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
     elif args.task_name == "pg19":
-        save_path = f'./pg19_model_{args.model_name_or_path}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
+        save_path = f'./pg19_model_{args.model_name_or_path}_ml{args.max_length}_bsz_{args.batch_size}_lr_{args.lr}_seed_{args.seed}_numsteps_{args.num_steps}_sample_{args.sample_strategy}_schedule_{args.schedule}_hybridlambda_{args.hybrid_lambda}_wordfreqlambda_{args.word_freq_lambda}_fromscratch_{args.from_scratch}_timestep_{args.timestep}_ckpts'
 
 
 
@@ -94,6 +95,9 @@ if __name__ == '__main__':
         "JunxiongWang/BiGS_512",
         "JunxiongWang/BiGS_1024",
         "JunxiongWang/BiGS_4096",
+    ]
+    mosaic_models = [
+        "mosaicml/mosaic-bert-base",
     ]
     if args.model_name_or_path in ['bert-base-uncased', 'bert-large-uncased']:
         model_cls = BertForMaskedLM
@@ -108,14 +112,24 @@ if __name__ == '__main__':
         model_cls = BiGSForMaskedLM
         cfg_cls = BiGSConfig
         tok_cls = BertTokenizer
+    elif args.model_name_or_path in mosaic_models:
+        model_cls = AutoModelForMaskedLM
+        cfg_cls = BertConfig
+        tok_cls = BertTokenizer
     else:
         raise NotImplementedError
 
-
-    tokenizer = tok_cls.from_pretrained(args.model_name_or_path)
+    if args.model_name_or_path not in mosaic_models:
+        tokenizer = tok_cls.from_pretrained(args.model_name_or_path)
+    elif args.model_name_or_path in mosaic_models:
+        tokenizer = tok_cls.from_pretrained("bert-base-uncased")
     word_freq = torch.load(
         f'./word_freq/{args.model_name_or_path}_{args.task_name}.pt'
-        if args.model_name_or_path not in bigs_models + ["bert-large-uncased"]
+        if args.model_name_or_path not in (
+            bigs_models
+            + mosaic_models
+            + ["bert-large-uncased"]
+        )
         else f'./word_freq/bert-base-uncased_{args.task_name}.pt'
     )
     assert word_freq.size(0) == tokenizer.vocab_size
@@ -157,11 +171,14 @@ if __name__ == '__main__':
         ckpt = torch.load(os.path.join(save_path, f'best({args.load_step}).th'))
     cfg = cfg_cls.from_pretrained(args.model_name_or_path)
     cfg.overall_timestep = diffusion_instance.num_steps
+    cfg.alibi_starting_size = args.max_length + 2 # maximum sequence length updated to 1024 from config default of 512
 
     if args.from_scratch:
         model = model_cls(cfg).to(device)
     elif args.load_step <= 0:
-        model = model_cls.from_pretrained(args.model_name_or_path, config=cfg).to(device)
+        model = model_cls.from_pretrained(
+            args.model_name_or_path, config=cfg, trust_remote_code=True,
+        ).to(device)
     else:
         model = model_cls(cfg).to(device)
         model.load_state_dict(ckpt['model'])
