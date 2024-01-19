@@ -98,6 +98,7 @@ if __name__ == '__main__':
     ]
     mosaic_models = [
         "mosaicml/mosaic-bert-base",
+        "mosaicml/mosaic-bert-base-seqlen-1024",
     ]
     if args.model_name_or_path in ['bert-base-uncased', 'bert-large-uncased']:
         model_cls = BertForMaskedLM
@@ -267,7 +268,10 @@ if __name__ == '__main__':
                 sep.repeat(bsz, 1)
             ), dim=1)
             attention_mask = torch.cat((att_ones.repeat(bsz, 1), attention_mask, att_zeros.repeat(bsz, 1)), dim=1)
-            return model(input_ids=targets, timestep=timestep - 1, attention_mask=attention_mask)['logits'][:, 1:-1, :]
+            #return model(input_ids=targets, timestep=timestep - 1, attention_mask=attention_mask)['logits'][:, 1:-1, :]
+            # NO NEED FOR TIMESTEP, EVER
+            # for mosaic bert: need to truncate logits
+            return model(input_ids=targets, attention_mask=attention_mask)['logits'][:, 1:-1, :len(tokenizer)]
     else:
         raise NotImplementedError
 
