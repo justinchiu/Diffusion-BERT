@@ -56,4 +56,5 @@ df = pd.DataFrame({
     "n": num_xs,
 })
 print(df)
+df.to_csv("analyze_length/results.csv")
 import pdb; pdb.set_trace()
