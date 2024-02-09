@@ -18,12 +18,12 @@ start_end_pairs = [
     (96, 128),
 ]
 
+models = []
+steps = []
+lengths = []
+ppls = []
+num_xs = []
 for model in ["bert-base", "bert-base-scratch", "bert-large", "bigs-large", "bigs-large-scratch"]:
-    steps = []
-    lengths = []
-    ppls = []
-    num_xs = []
-
     for size in step_sizes:
         for s,t in start_end_pairs:
             if model == "bert-base":
@@ -42,17 +42,18 @@ for model in ["bert-base", "bert-base-scratch", "bert-large", "bigs-large", "big
             avg_ppl = math.exp(avg_elbo)
             num_tokens = xs["num_tokens"]
             num_examples = xs["num_examples"]
+            models.append(model)
             steps.append(2048//size)
             lengths.append((s,t))
             ppls.append(avg_ppl)
             num_xs.append(num_examples)
 
-    df = pd.DataFrame({
-        "steps": steps,
-        "lengths": lengths,
-        "ppls": ppls,
-        "n": num_xs,
-    })
-
-    print(model)
-    print(df)
+df = pd.DataFrame({
+    "model": models,
+    "steps": steps,
+    "lengths": lengths,
+    "ppls": ppls,
+    "n": num_xs,
+})
+print(df)
+import pdb; pdb.set_trace()
