@@ -52,6 +52,7 @@ def parse_args():
     parser.add_argument("--schedule", default='mutual', type=str, required=False)
     parser.add_argument("--from_scratch", default=False, type=bool, required=False)
     parser.add_argument("--timestep", default='none', type=str, required=False)
+    parser.add_argument("--wrap_text", action="store_true")
     return parser.parse_args()
 
 
@@ -99,6 +100,7 @@ if __name__ == '__main__':
     mosaic_models = [
         "mosaicml/mosaic-bert-base",
         "mosaicml/mosaic-bert-base-seqlen-1024",
+        "mosaicml/mosaic-bert-base-seqlen-2048",
     ]
     if args.model_name_or_path in ['bert-base-uncased', 'bert-large-uncased']:
         model_cls = BertForMaskedLM
@@ -194,6 +196,7 @@ if __name__ == '__main__':
     train_data, test_data = DiffusionLoader(
         tokenizer=tokenizer,
         max_length=args.max_length,
+        wrap_text = args.wrap_text,
     ).my_load(task_name=args.task_name, splits=['train', 'test'])
     train_data, dev_data = train_data.train_test_split(test_size=args.dev_size).values()
 

@@ -6,9 +6,11 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 class DiffusionLoader:
-    def __init__(self, tokenizer, max_length=128):
+    def __init__(self, tokenizer, max_length=128, wrap_text=False):
         self.tokenizer = tokenizer
         self.max_length = max_length
+        # set truncate = False for wrapping
+        self.wrap_text = wrap_text
 
     def _load(self, task_name, split):
         dataset = datasets.load_dataset(task_name, split=split)
@@ -19,9 +21,11 @@ class DiffusionLoader:
                 self.convert_to_features,
                 tokenizer=self.tokenizer,
                 max_length=self.max_length,
+                wrap_text = self.wrap_text,
             ),
             batched=True,
-            remove_columns='text',
+            #remove_columns='text',
+            remove_columns=dataset.column_names,
         )
         return dataset
 
@@ -29,17 +33,40 @@ class DiffusionLoader:
         return [self._load(task_name, name) for name in splits]
 
     @staticmethod
-    def convert_to_features(example_batch, tokenizer, max_length):
+    def convert_to_features(example_batch, tokenizer, max_length, wrap_text):
         input_encodings = tokenizer.batch_encode_plus(
             example_batch['text'],
-            max_length=max_length,
-            truncation=True,
+            max_length=max_length if not wrap_text else None,
+            truncation=not wrap_text,
             add_special_tokens=False,
         )
         encodings = {
             'input_ids': input_encodings['input_ids'],
             'attention_mask': input_encodings['attention_mask'],
         }
+        if wrap_text:
+            input_ids = []
+            attention_mask = []
+            block_size = max_length
+            for tokens, mask in zip(
+                input_encodings["input_ids"],
+                input_encodings["attention_mask"],
+            ):
+                total_length = len(tokens)
+                #total_length = (total_length // block_size) * block_size
+                # Split by chunks of max_len.
+                input_ids += [
+                    tokens[i : i + block_size]
+                    for i in range(0, total_length, block_size)
+                ]
+                attention_mask += [
+                    mask[i : i + block_size]
+                    for i in range(0, total_length, block_size)
+                ]
+            encodings = {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+            }
         return encodings
 
 class ConditionalLoader:
@@ -193,4 +220,9 @@ class DiffusionLoaderWithElectra(DiffusionLoader):
         return encodings
 
 
-
+if __name__ == "__main__":
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    loader = DiffusionLoader(tokenizer, max_length=2048, wrap_text = True)
+    data = loader.my_load("pg19", ["validation"])
+    import pdb; pdb.set_trace()
