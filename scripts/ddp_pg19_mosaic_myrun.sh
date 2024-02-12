@@ -7,7 +7,7 @@ torchrun --nnodes=1 --nproc-per-node=1 --master-port=$3 DDP_main.py \
   --timestep 'layerwise' \
   --model_name_or_path mosaicml/mosaic-bert-base-seqlen-2048 \
   --wrap_text \
-  --epochs 10 \
+  --epochs 3 \
   --num_steps $2 \
   --logging_steps 100
 # --batch_size 16 for a100
