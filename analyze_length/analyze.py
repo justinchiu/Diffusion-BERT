@@ -47,6 +47,7 @@ for model in ["bert-base", "bert-base-scratch", "bert-large", "bigs-large", "big
             lengths.append((s,t))
             ppls.append(avg_ppl)
             num_xs.append(num_examples)
+            import pdb; pdb.set_trace()
 
 df = pd.DataFrame({
     "model": models,
